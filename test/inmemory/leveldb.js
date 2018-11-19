@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import chai, { expect } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import fs from 'fs';
-import InMemoryStorageLevelDb from '../../lib/inmemory/inmemory_leveldb';
+import InMemoryStorageLevelDb, { splitBuffer } from '../../lib/inmemory/inmemory_leveldb';
 
 chai.use(chaiAsPromised);
 
@@ -13,6 +13,40 @@ describe('testing inmemory with leveldb', () => {
 
   after(() => {
     cleanDb(dbPath);
+  });
+
+  describe('restoring encrypted values', () => {
+    let db;
+    before(() => {
+      cleanDb(dbPath);
+      db = new InMemoryStorageLevelDb({
+        publicKey,
+        path: dbPath,
+        modulusLength: 1024,
+      });
+    });
+
+    it('restoring encrypted values', async () => {
+      const aLongString = crypto.randomBytes(10000).toString();
+      db.put('key', aLongString);
+      await db.flush();
+      const encrypted = await db.getStored('key');
+      const restored = Buffer.concat(
+        splitBuffer(encrypted, db.RSA_SIZE).map(b => {
+          return crypto.privateDecrypt({
+            key: privateKey,
+            padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
+          }, b);
+        })
+      );
+
+      expect(aLongString).to.equal(restored.toString());
+
+    });
+    after(async () => {
+      await db.close();
+      cleanDb(dbPath);
+    });
   });
 
   describe('test putting and getting from store', () => {
@@ -32,6 +66,7 @@ describe('testing inmemory with leveldb', () => {
       db = new InMemoryStorageLevelDb({
         publicKey,
         path: dbPath,
+        modulusLength: 1024,
       });
     });
 
@@ -114,6 +149,7 @@ describe('testing inmemory with leveldb', () => {
         db = new InMemoryStorageLevelDb({
           publicKey,
           path: dbPath,
+          modulusLength: 1024,
         });
         db.put('key1', 'value1');
         db.put('key2', 'value2');
@@ -140,6 +176,7 @@ describe('testing inmemory with leveldb', () => {
         cleanDb(dbPath);
         db = new InMemoryStorageLevelDb({
           publicKey,
+          modulusLength: 1024,
           path: dbPath,
         });
         db.put('key1', 'value1');
@@ -148,6 +185,7 @@ describe('testing inmemory with leveldb', () => {
         await db.close();
         db = new InMemoryStorageLevelDb({
           publicKey,
+          modulusLength: 1024,
           path: dbPath,
         });
       });

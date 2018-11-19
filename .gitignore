@@ -2,5 +2,6 @@ node_modules/
 config/*
 !config/default.json
 build/
+files/*
+!files/pub.pem
 dist/
-db/

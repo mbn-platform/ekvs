@@ -1,6 +1,7 @@
 import leveldown, { Bytes, LevelDown } from 'leveldown';
 import levelup, { LevelUp } from 'levelup';
 import crypto from 'crypto';
+import constants from 'constants';
 
 import { IPersistantStorage } from './';
 import InMemoryStorage from './inmemory';
@@ -8,10 +9,15 @@ import InMemoryStorage from './inmemory';
 interface Options {
   publicKey: string;
   path: string;
+  modulusLength: number;
 }
+
+/** number of bytes required for padding  */
+const RSA_PKCS1_OAEP_PADDING_LENGTH = 42;
 
 class InMemoryStorageLevelDb extends InMemoryStorage<string, Bytes> implements IPersistantStorage {
 
+  public readonly RSA_SIZE: number;
   private newValues = new Map<string, Bytes>();
   private isFlushing = false;
   private db: LevelUp<LevelDown>;
@@ -24,6 +30,7 @@ class InMemoryStorageLevelDb extends InMemoryStorage<string, Bytes> implements I
     super();
     this.publicKey = options.publicKey;
     this.db = levelup(leveldown(options.path));
+    this.RSA_SIZE = options.modulusLength / 8;
   }
 
   /**
@@ -140,13 +147,12 @@ class InMemoryStorageLevelDb extends InMemoryStorage<string, Bytes> implements I
     } else {
       buffer = value;
     }
-    if (this.publicKey) {
-      return crypto.publicEncrypt({
-        key: this.publicKey,
-      }, buffer);
-    } else {
-      return buffer;
-    }
+    const chunks = splitBuffer(buffer, this.RSA_SIZE - RSA_PKCS1_OAEP_PADDING_LENGTH);
+    const encryptedChunks = chunks.map(b => crypto.publicEncrypt({
+      key: this.publicKey,
+      padding: constants.RSA_PKCS1_OAEP_PADDING,
+    }, b));
+    return Buffer.concat(encryptedChunks);
   }
 
   /**
@@ -196,5 +202,18 @@ class InMemoryStorageLevelDb extends InMemoryStorage<string, Bytes> implements I
     });
   }
 }
+
+export function splitBuffer(buffer: Buffer, size: number): Buffer[] {
+  const array: Buffer[] = [];
+  let startIndex = 0;
+  let partial = buffer.slice(startIndex, size);
+  while (partial.length > 0) {
+    array.push(partial);
+    startIndex += size;
+    partial = buffer.slice(startIndex, startIndex + size);
+  }
+  return array;
+}
+
 
 export default InMemoryStorageLevelDb;

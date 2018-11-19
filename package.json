@@ -6,7 +6,7 @@
   "scripts": {
     "build": "rm -rf build/ && tsc",
     "build-prod": "rm -rf dist && tsc --outDir dist && mkdir dist/config && cp config/default.json dist/config/ && cp package* dist",
-    "test": "mocha -r ts-node/register 'test/**/*.{js,ts}' --exit"
+    "test": "TS_NODE_FILES=true mocha -r ts-node/register 'test/**/*.{js,ts}' --exit"
   },
   "author": "",
   "license": "ISC",
