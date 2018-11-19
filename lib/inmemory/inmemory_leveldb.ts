@@ -18,6 +18,8 @@ const RSA_PKCS1_OAEP_PADDING_LENGTH = 42;
 class InMemoryStorageLevelDb extends InMemoryStorage<string, Bytes> implements IPersistantStorage {
 
   public readonly RSA_SIZE: number;
+
+  /** Cache for data which is not yet encrypted and stored */
   private newValues = new Map<string, Bytes>();
   private isFlushing = false;
   private db: LevelUp<LevelDown>;
@@ -51,6 +53,9 @@ class InMemoryStorageLevelDb extends InMemoryStorage<string, Bytes> implements I
     this.newValues.set(key, value);
   }
 
+  /**
+   * Get all values, that are stored and encrypted, but not in memory
+   */
   public getEncrypted(): Promise<Map<string, Buffer>> {
     const map = new Map();
     return new Promise((res, rej) => {
