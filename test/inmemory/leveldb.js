@@ -2,11 +2,11 @@ import crypto from 'crypto';
 import chai, { expect } from 'chai';
 import chaiAsPromised from 'chai-as-promised';
 import fs from 'fs';
-import InMemoryStorageLevelDb, { splitBuffer } from '../../lib/inmemory/inmemory_leveldb';
+import InMemoryStorageLevelDb from '../../lib/inmemory/inmemory_leveldb';
 
 chai.use(chaiAsPromised);
 
-describe('testing inmemory with leveldb', () => {
+describe.only('testing inmemory with leveldb', () => {
 
   const dbPath = './testdb';
   const { publicKey, privateKey } = generateKeyPair();
@@ -27,13 +27,13 @@ describe('testing inmemory with leveldb', () => {
     });
 
     it('restoring encrypted values', async () => {
-      const aLongString = crypto.randomBytes(10000).toString();
-      db.put('key', aLongString);
+      const value = crypto.randomBytes(10000);
+      db.put('key', value);
       await db.flush();
       const encrypted = await db.getStored('key');
-      const restored = decrypt(privateKey, encrypted, db.RSA_SIZE);
+      const restored = db.decrypt(encrypted, privateKey);
 
-      expect(restored.toString()).to.equal(aLongString);
+      expect(restored.equals(value)).to.be.true;
 
     });
     after(async () => {
@@ -125,7 +125,7 @@ describe('testing inmemory with leveldb', () => {
 
     it('getting stored value', async () => {
       const encrypted = await db.getStored(testKey);
-      const value = decrypt(privateKey, encrypted, db.RSA_SIZE).toString();
+      const value = db.decrypt(encrypted, privateKey).toString();
       expect(value).to.equal(testValue);
     });
 
@@ -230,15 +230,4 @@ function cleanDb(path) {
     });
     fs.rmdirSync(path);
   }
-}
-
-function decrypt(privateKey, data, keySize) {
-  const key = crypto.privateDecrypt({
-    key: privateKey,
-    padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
-  }, data.slice(0, keySize));
-  const decipher = crypto.createDecipher('chacha20', key);
-  const decrypted = decipher.update(data.slice(128));
-  decipher.final();
-  return decrypted;
 }

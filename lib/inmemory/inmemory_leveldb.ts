@@ -149,15 +149,46 @@ class InMemoryStorageLevelDb extends InMemoryStorage<string, Bytes> implements I
     } else {
       buffer = value;
     }
+
     const chachaKey = crypto.randomBytes(40);
-    const cipher = crypto.createCipher('chacha20', chachaKey);
-    const encryptedData = cipher.update(buffer);
-    cipher.final();
     const encryptedKey = crypto.publicEncrypt({
       key: this.publicKey,
       padding: constants.RSA_PKCS1_OAEP_PADDING,
     }, chachaKey);
-    return Buffer.concat([encryptedKey, encryptedData]);
+
+    const leadingNoise = getRandomBuffer();
+    const trailingNoise = getRandomBuffer();
+    const metaBuffer = Buffer.alloc(7);
+    metaBuffer[0] = leadingNoise.length + 7;
+    metaBuffer.writeUIntBE(buffer.length, 1, 6);
+
+    const data = Buffer.concat([metaBuffer, leadingNoise, buffer, trailingNoise]);
+
+    const cipher = crypto.createCipher('chacha20', chachaKey);
+    const encryptedData = cipher.update(data);
+    cipher.final();
+
+    const total = Buffer.concat([encryptedKey, encryptedData]);
+    return total;
+  }
+
+  public decrypt(value: Buffer, privateKey: string) {
+    const encryptedKey = value.slice(0, this.RSA_SIZE);
+    const encryptedData = value.slice(this.RSA_SIZE);
+
+    const decryptedKey = crypto.privateDecrypt({
+      key: privateKey,
+      padding: constants.RSA_PKCS1_OAEP_PADDING,
+    }, encryptedKey);
+
+    const decipher = crypto.createDecipher('chacha20', decryptedKey);
+    const decryptedData = decipher.update(encryptedData);
+    decipher.final();
+
+    const dataOffset = decryptedData[0];
+    const dataLength = decryptedData.readUIntBE(1, 6);
+
+    return decryptedData.slice(dataOffset, dataOffset + dataLength);
   }
 
   /**
@@ -208,16 +239,9 @@ class InMemoryStorageLevelDb extends InMemoryStorage<string, Bytes> implements I
   }
 }
 
-export function splitBuffer(buffer: Buffer, size: number): Buffer[] {
-  const array: Buffer[] = [];
-  let startIndex = 0;
-  let partial = buffer.slice(startIndex, size);
-  while (partial.length > 0) {
-    array.push(partial);
-    startIndex += size;
-    partial = buffer.slice(startIndex, startIndex + size);
-  }
-  return array;
+function getRandomBuffer(minLength: number = 5, maxLength: number = 15 ) {
+  const length = crypto.randomBytes(1)[0] % (maxLength - minLength) + minLength;
+  return crypto.randomBytes(length);
 }
 
 
