@@ -12,9 +12,6 @@ interface Options {
   modulusLength: number;
 }
 
-/** number of bytes required for padding  */
-const RSA_PKCS1_OAEP_PADDING_LENGTH = 42;
-
 class InMemoryStorageLevelDb extends InMemoryStorage<string, Bytes> implements IPersistantStorage {
 
   public readonly RSA_SIZE: number;
@@ -152,12 +149,15 @@ class InMemoryStorageLevelDb extends InMemoryStorage<string, Bytes> implements I
     } else {
       buffer = value;
     }
-    const chunks = splitBuffer(buffer, this.RSA_SIZE - RSA_PKCS1_OAEP_PADDING_LENGTH);
-    const encryptedChunks = chunks.map(b => crypto.publicEncrypt({
+    const chachaKey = crypto.randomBytes(40);
+    const cipher = crypto.createCipher('chacha20', chachaKey);
+    const encryptedData = cipher.update(buffer);
+    cipher.final();
+    const encryptedKey = crypto.publicEncrypt({
       key: this.publicKey,
       padding: constants.RSA_PKCS1_OAEP_PADDING,
-    }, b));
-    return Buffer.concat(encryptedChunks);
+    }, chachaKey);
+    return Buffer.concat([encryptedKey, encryptedData]);
   }
 
   /**

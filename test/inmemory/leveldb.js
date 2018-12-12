@@ -31,16 +31,9 @@ describe('testing inmemory with leveldb', () => {
       db.put('key', aLongString);
       await db.flush();
       const encrypted = await db.getStored('key');
-      const restored = Buffer.concat(
-        splitBuffer(encrypted, db.RSA_SIZE).map(b => {
-          return crypto.privateDecrypt({
-            key: privateKey,
-            padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
-          }, b);
-        })
-      );
+      const restored = decrypt(privateKey, encrypted, db.RSA_SIZE);
 
-      expect(aLongString).to.equal(restored.toString());
+      expect(restored.toString()).to.equal(aLongString);
 
     });
     after(async () => {
@@ -132,7 +125,7 @@ describe('testing inmemory with leveldb', () => {
 
     it('getting stored value', async () => {
       const encrypted = await db.getStored(testKey);
-      const value = crypto.privateDecrypt(privateKey, encrypted).toString('utf8');
+      const value = decrypt(privateKey, encrypted, db.RSA_SIZE).toString();
       expect(value).to.equal(testValue);
     });
 
@@ -237,4 +230,15 @@ function cleanDb(path) {
     });
     fs.rmdirSync(path);
   }
+}
+
+function decrypt(privateKey, data, keySize) {
+  const key = crypto.privateDecrypt({
+    key: privateKey,
+    padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,
+  }, data.slice(0, keySize));
+  const decipher = crypto.createDecipher('chacha20', key);
+  const decrypted = decipher.update(data.slice(128));
+  decipher.final();
+  return decrypted;
 }
