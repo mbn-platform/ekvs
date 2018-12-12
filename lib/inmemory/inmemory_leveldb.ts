@@ -151,44 +151,42 @@ class InMemoryStorageLevelDb extends InMemoryStorage<string, Bytes> implements I
     }
 
     const chachaKey = crypto.randomBytes(40);
-    const encryptedKey = crypto.publicEncrypt({
-      key: this.publicKey,
-      padding: constants.RSA_PKCS1_OAEP_PADDING,
-    }, chachaKey);
+    const cipher = crypto.createCipher('chacha20', chachaKey);
+    const encryptedData = cipher.update(buffer);
+    cipher.final();
 
     const leadingNoise = getRandomBuffer();
     const trailingNoise = getRandomBuffer();
     const metaBuffer = Buffer.alloc(7);
-    metaBuffer[0] = leadingNoise.length + 7;
+    metaBuffer[0] = leadingNoise.length;
     metaBuffer.writeUIntBE(buffer.length, 1, 6);
 
-    const data = Buffer.concat([metaBuffer, leadingNoise, buffer, trailingNoise]);
+    const encryptedMeta = crypto.publicEncrypt({
+      key: this.publicKey,
+      padding: constants.RSA_PKCS1_OAEP_PADDING,
+    }, Buffer.concat([metaBuffer, chachaKey]));
 
-    const cipher = crypto.createCipher('chacha20', chachaKey);
-    const encryptedData = cipher.update(data);
-    cipher.final();
-
-    const total = Buffer.concat([encryptedKey, encryptedData]);
+    const total = Buffer.concat([encryptedMeta, leadingNoise, encryptedData, trailingNoise]);
     return total;
   }
 
   public decrypt(value: Buffer, privateKey: string) {
-    const encryptedKey = value.slice(0, this.RSA_SIZE);
-    const encryptedData = value.slice(this.RSA_SIZE);
-
-    const decryptedKey = crypto.privateDecrypt({
+    const encryptedMeta = value.slice(0, this.RSA_SIZE);
+    const decryptedMeta = crypto.privateDecrypt({
       key: privateKey,
       padding: constants.RSA_PKCS1_OAEP_PADDING,
-    }, encryptedKey);
+    }, encryptedMeta);
+    const dataOffset = decryptedMeta[0];
+    const dataLength = decryptedMeta.readUIntBE(1, 6);
+    const chachaKey = decryptedMeta.slice(7);
+    const data = value.slice(this.RSA_SIZE);
+    const encryptedData = data.slice(dataOffset, dataOffset + dataLength);
 
-    const decipher = crypto.createDecipher('chacha20', decryptedKey);
+    const decipher = crypto.createDecipher('chacha20', chachaKey);
     const decryptedData = decipher.update(encryptedData);
     decipher.final();
 
-    const dataOffset = decryptedData[0];
-    const dataLength = decryptedData.readUIntBE(1, 6);
-
-    return decryptedData.slice(dataOffset, dataOffset + dataLength);
+    return decryptedData;
   }
 
   /**
