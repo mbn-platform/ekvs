@@ -6,7 +6,7 @@ import InMemoryStorageLevelDb from '../../lib/inmemory/inmemory_leveldb';
 
 chai.use(chaiAsPromised);
 
-describe.only('testing inmemory with leveldb', () => {
+describe('testing inmemory with leveldb', () => {
 
   const dbPath = './testdb';
   const { publicKey, privateKey } = generateKeyPair();

@@ -122,6 +122,13 @@ class InMemoryStorageLevelDb extends InMemoryStorage<string, Bytes> implements I
     return this._getFromStore(key);
   }
 
+  public count() {
+    const stat = {
+      inMemory: this.map.size,
+    }
+    return stat;
+  }
+
   public getStatus(key: string): Promise<number> {
     let mask = 0;
     if (this.map.has(key)) {
