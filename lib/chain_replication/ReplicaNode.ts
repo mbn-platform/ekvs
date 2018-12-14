@@ -1,6 +1,9 @@
 import InMemoryStorageLevelDb from '../inmemory/inmemory_leveldb';
 import { IRemoteReplicaNode } from './remote';
-import { Request, Response, RequestType, QueryRequest, UpdateRequest } from '.';
+import { Request, Response, RequestType,
+  QueryRequest, UpdateRequest,
+  IQueryInterface
+} from '.';
 import { OperationQueue } from './OperationQueue';
 
 export class ReplicaNode {
@@ -8,6 +11,7 @@ export class ReplicaNode {
   private readonly db: InMemoryStorageLevelDb;
   private prevNode?: IRemoteReplicaNode;
   private nextNode?: IRemoteReplicaNode;
+  private queryInterface?: IQueryInterface;
   protected name: string;
 
   private pending: Map<string, Request> = new Map();
@@ -42,6 +46,13 @@ export class ReplicaNode {
     this.prevNode = node;
   }
 
+  public setQueryInterface(q: IQueryInterface) {
+    this.queryInterface = q;
+    q.on('message', message => {
+      this.handleRequest(message.payload as Request);
+    });
+  }
+
   get isTail(): boolean {
     return this.nextNode === undefined;
   }
@@ -69,7 +80,9 @@ export class ReplicaNode {
           value,
         };
         //TODO: handle response for query
-        console.log(`${this.name} return value for ${response.key}: ${response.value}`);
+        if (this.queryInterface) {
+          this.queryInterface.onResponse(response);
+        }
         break;
       }
       case RequestType.Update: {
@@ -99,6 +112,8 @@ export class ReplicaNode {
     this.pending.delete(response.id);
     if (this.prevNode) {
       await this.prevNode.propagateUp(response);
+    } else if (this.queryInterface) {
+      this.queryInterface.onResponse(response);
     }
   }
 

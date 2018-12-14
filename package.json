@@ -11,17 +11,26 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@types/koa": "^2.0.47",
+    "@types/koa-bodyparser": "^4.2.1",
+    "@types/koa-router": "^7.0.35",
+    "koa": "^2.6.2",
+    "koa-bodyparser": "^4.2.1",
+    "koa-router": "^7.4.0",
     "leveldown": "^4.0.1",
     "levelup": "^3.1.1",
+    "uuid": "^3.3.2",
     "ws": "^6.1.2"
   },
   "devDependencies": {
     "@types/leveldown": "^4.0.0",
     "@types/levelup": "^3.1.0",
     "@types/node": "^10.12.6",
+    "@types/uuid": "^3.4.4",
     "@types/ws": "^6.0.1",
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
+    "chai-http": "^4.2.0",
     "mocha": "^5.2.0",
     "ts-node": "^7.0.1",
     "typescript": "^3.2.2"

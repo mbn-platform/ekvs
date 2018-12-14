@@ -1,3 +1,4 @@
+import { Message } from './remote';
 
 export enum RequestType {
   Update, Query
@@ -21,4 +22,9 @@ export interface UpdateRequest extends Request {
 }
 export interface QueryRequest extends Request {
   type: RequestType.Query;
+}
+
+export interface IQueryInterface {
+  on(event: 'message', listener: (this: IQueryInterface, message: Message) => void): this;
+  onResponse(response: Response): void;
 }
