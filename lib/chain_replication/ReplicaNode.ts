@@ -23,23 +23,13 @@ export class ReplicaNode {
     this.name = name;
     this.db = db;
     this.requestQueue = new OperationQueue(async (request) => {
-      try {
-        await this._handleRequest(request);
-        return true;
-      } catch (e) {
-        console.log('failed to handle request', request, e);
-        return false;
-      }
+      await this._handleRequest(request);
+      return true;
     });
     this.responseQueue = new OperationQueue(async (response) => {
-      try {
-        await this._handleResponse(response);
-        return true;
-      } catch (e) {
-        console.log('failed to hanlde response', response);
-        return false;
-      }
-    })
+      await this._handleResponse(response);
+      return true;
+    });
   }
 
   public handleRequest(request: Request) {
@@ -52,23 +42,15 @@ export class ReplicaNode {
 
   public setNext(node: IRemoteReplicaNode) {
     this.nextNode = node;
-    node.onOpen = () => {
-      this.requestQueue.handleQueue();
-    };
   }
 
   public setPrevious(node: IRemoteReplicaNode) {
     this.prevNode = node;
-    node.onOpen = () => {
-      console.log(this.responseQueue);
-      this.responseQueue.handleQueue();
-    };
   }
 
   public setQueryInterface(q: IQueryInterface) {
     this.queryInterface = q;
     q.on('message', message => {
-      console.log('query message', message);
       this.handleRequest(message.payload as Request);
     });
   }
@@ -109,9 +91,10 @@ export class ReplicaNode {
       case RequestType.Update: {
         this.pending.set(request.id, request);
         if (this.nextNode) {
-          console.log('propagating down');
-          console.log(this.pending);
-          await this.nextNode.propagateDown(request);
+          await this.nextNode.send({
+            type: 'request',
+            payload: request,
+          });
         } else {
           const req = request as UpdateRequest;
           const response = {
@@ -133,7 +116,10 @@ export class ReplicaNode {
     await this.db.flush();
     this.pending.delete(response.id);
     if (this.prevNode) {
-      await this.prevNode.propagateUp(response);
+      await this.prevNode.send({
+        type: 'response',
+        payload: response,
+      });
     } else if (this.queryInterface) {
       this.queryInterface.onResponse(response);
     }
