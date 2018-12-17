@@ -4,5 +4,7 @@ import { Message } from '..';
  */
 export interface Transport {
   on(event: 'message', listener: (this: Transport, message: Message) => void): this;
+  on(event: 'open', listener: (this: Transport) => void): this;
+  on(event: 'close', listener: (this: Transport) => void): this;
   send(message: Message): void;
 }

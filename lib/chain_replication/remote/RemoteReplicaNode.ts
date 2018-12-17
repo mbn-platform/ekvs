@@ -7,6 +7,8 @@ export class RemoteReplicaNode implements IRemoteReplicaNode {
   private node: ReplicaNode;
   private transport: Transport;
 
+  public ready: boolean = false;
+
   constructor(node: ReplicaNode, transport: Transport) {
     this.node = node;
     this.transport = transport;
@@ -19,6 +21,16 @@ export class RemoteReplicaNode implements IRemoteReplicaNode {
           this.node.handleResponse(msg.payload as Response);
           break;
       }
+    });
+    transport.on('open', () => {
+      console.log('transport open');
+      this.onOpen();
+      this.ready = true;
+    });
+    transport.on('close', () => {
+      console.log('transport closed');
+      this.ready = false;
+      this.onClose();
     });
   }
 
@@ -34,5 +46,13 @@ export class RemoteReplicaNode implements IRemoteReplicaNode {
       type: 'request',
       payload: request,
     });
+  }
+
+  public onOpen() {
+    console.log('not implemented');
+  }
+
+  public onClose() {
+    console.log('not implemented');
   }
 }

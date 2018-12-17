@@ -31,6 +31,7 @@ export class HttpInterface extends EventEmitter implements IQueryInterface {
       ctx.body = response;
     });
     router.post('/update', async ctx => {
+      console.log(ctx.request.body);
       const { key, value } = ctx.request.body as any;
       const message: Message = {
         type: 'request',

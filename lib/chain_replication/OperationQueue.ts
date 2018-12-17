@@ -1,4 +1,4 @@
-type Callback<T> = (element: T) => Promise<any>;
+type Callback<T> = (element: T) => Promise<boolean>;
 
 /**
  * Util class for processing requests
@@ -7,6 +7,8 @@ export class OperationQueue<T> {
   private queue: T[] = [];
   private handler: Callback<T>;
 
+  private isHandling = false;
+
 
   constructor(handler: Callback<T>) {
     this.handler = handler;
@@ -14,16 +16,23 @@ export class OperationQueue<T> {
 
   public add(elem: T) {
     this.queue.push(elem);
-    if (this.queue.length === 1) {
-      this.handleQueue();
-    }
+    this.handleQueue();
   }
 
-  private async handleQueue() {
+  public async handleQueue() {
+    if (this.isHandling) {
+      return;
+    }
+    this.isHandling = true;
     while (this.queue.length !== 0) {
       const elem = this.queue[0];
-      await this.handler(elem);
-      this.queue.shift();
+      const success = await this.handler(elem);
+      if (success) {
+        this.queue.shift();
+      } else {
+        break;
+      }
     }
+    this.isHandling = false;
   }
 }

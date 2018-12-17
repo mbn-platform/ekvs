@@ -23,10 +23,22 @@ export class ReplicaNode {
     this.name = name;
     this.db = db;
     this.requestQueue = new OperationQueue(async (request) => {
-      await this._handleRequest(request);
+      try {
+        await this._handleRequest(request);
+        return true;
+      } catch (e) {
+        console.log('failed to handle request', request, e);
+        return false;
+      }
     });
     this.responseQueue = new OperationQueue(async (response) => {
-      await this._handleResponse(response);
+      try {
+        await this._handleResponse(response);
+        return true;
+      } catch (e) {
+        console.log('failed to hanlde response', response);
+        return false;
+      }
     })
   }
 
@@ -40,15 +52,23 @@ export class ReplicaNode {
 
   public setNext(node: IRemoteReplicaNode) {
     this.nextNode = node;
+    node.onOpen = () => {
+      this.requestQueue.handleQueue();
+    };
   }
 
   public setPrevious(node: IRemoteReplicaNode) {
     this.prevNode = node;
+    node.onOpen = () => {
+      console.log(this.responseQueue);
+      this.responseQueue.handleQueue();
+    };
   }
 
   public setQueryInterface(q: IQueryInterface) {
     this.queryInterface = q;
     q.on('message', message => {
+      console.log('query message', message);
       this.handleRequest(message.payload as Request);
     });
   }
@@ -67,6 +87,7 @@ export class ReplicaNode {
 
   private async _handleRequest(request: Request) {
     console.log(`${this.name} handle request ${request.id}`);
+    console.log(request);
     switch (request.type) {
       case RequestType.Query: {
         const req = request as QueryRequest;
@@ -89,6 +110,7 @@ export class ReplicaNode {
         this.pending.set(request.id, request);
         if (this.nextNode) {
           console.log('propagating down');
+          console.log(this.pending);
           await this.nextNode.propagateDown(request);
         } else {
           const req = request as UpdateRequest;
