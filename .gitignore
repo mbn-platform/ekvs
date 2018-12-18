@@ -3,3 +3,4 @@ config/*
 !config/default.json
 build/
 dist/
+db/
