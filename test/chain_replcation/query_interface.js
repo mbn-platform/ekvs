@@ -37,41 +37,9 @@ describe.only('testing http request interface', () => {
     console.log(res.body);
   });
 
-  //it('', () => {
-    //expect(node.isTail).to.be.true;
-    //expect(node.isHead).to.be.true;
-  //});
-
-  //it('testing putting and getting values', async () => {
-    //node.handleRequest({
-      //type:0,
-      //id: '1bac',
-      //key: 'test',
-      //value: 'value',
-    //});
-    //node.handleRequest({
-      //type: 1,
-      //id:'other',
-      //key: 'test',
-    //});
-    //node.handleRequest({
-      //type:0,
-      //id: 'asdasdasd',
-      //key: 'test',
-      //value: 'othervalue',
-    //});
-    //node.handleRequest({
-      //type: 1,
-      //id:'other',
-      //key: 'test',
-    //});
-    //await new Promise(res => setTimeout(res, 500));
-
-  //});
-
-  //after(() => {
-    //cleanDb(dbPath);
-  //});
+  after(() => {
+    cleanDb(dbPath);
+  });
 });
 
 function generateKeyPair() {
