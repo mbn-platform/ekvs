@@ -1,0 +1,19 @@
+{
+  "name": "idnow-hook-handler",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "rm -rf build/ && tsc",
+    "build-prod": "rm -rf dist && tsc --outDir dist && mkdir dist/config && cp config/default.json dist/config/ && cp package* dist",
+    "test": "mocha -r ts-node/register test/**.{js,ts} --exit"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {},
+  "devDependencies": {
+    "mocha": "^5.2.0",
+    "ts-node": "^7.0.1",
+    "typescript": "^3.2.2"
+  }
+}
