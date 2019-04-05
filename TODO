@@ -1,0 +1,5 @@
+1) proxy
+ - get addresses from discovery
+2) Discovery service
+ - get topology
+ - sign
